@@ -1,3 +1,4 @@
+<%@page import="java.net.URLDecoder"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
 <!DOCTYPE html>
@@ -20,15 +21,23 @@
 		session.setAttribute("messageContent", "현재 로그인이 되어있지 않습니다.");
 		response.sendRedirect("index.jsp");
 		return;
-}
+	}
 	//대화 상대가 지정되어 있지 않다면 
 	if (toID == null) {
 		session.setAttribute("messageType", "오류메시지");
 		session.setAttribute("messageContent", "대화 상대가 지정되지 않았습니다.");
 		response.sendRedirect("index.jsp");
 		return;
-}
+	}
+	if(userID.equals(URLDecoder.decode(toID, "UTF-8"))){
+		session.setAttribute("messageType", "오류메시지");
+		session.setAttribute("messageContent", "자기자신에게 메시지를 보낼 수 없습니다.");
+		response.sendRedirect("index.jsp");
+		return;
+	}
 	%>
+	
+	
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/bootstrap.css">
@@ -138,6 +147,38 @@
 			chatListFunction(lastID);
 		}, 3000);
 	}
+	
+	
+	
+	function getUnread(){
+		$.ajax({
+			type : "POST",
+			url : "./chatUnread",
+			data : {
+				userID : encodeURIComponent('<%= userID %>'),
+				
+			},
+			success: function(result){
+				//  0을 받으면 에러, 1이상을 받으면 정상처리
+				if(result >= 1){
+					showUnread(result);
+				} else {
+					// 0이 입력받을 때 공백 처리
+					showUnread('');
+				}
+			}
+		});
+	}
+	// 반복적으로 서버한테 일정 주기 마다 자신이 읽지 않은 메시지 갯수를 요청하는 함수
+	function getInfiniteUnread(){
+		setInterval(function(){		
+			getUnread();			
+		}, 1000);
+	}
+	// unread라는 id값을 가진 원소 내부 값을 result로 담아주기.
+	function showUnread(result){
+		$('#unread').html(result);
+	}
 </script>
 
 </head>
@@ -158,6 +199,7 @@
 			<ul class="nav navbar-nav">
 				<li><a href="index.jsp">메인</a></li>
 				<li><a href="find.jsp">친구찾기</a></li>
+				<li ><a href="box.jsp">메시지함<span id="unread" class="label label-info"></span></a></li>
 			</ul>
 			<%
 				if(userID != null){
@@ -277,8 +319,10 @@ else
 	%>
 	<script type="text/javascript">
 	$(document).ready(function(){
-		chatListFunction('ten');
+		getUnread();
+		chatListFunction('0');
 		getInfiniteChat();
+		getInfiniteUnread();
 	});
 	</script>
 </body>

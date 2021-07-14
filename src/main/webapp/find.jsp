@@ -63,6 +63,41 @@
   function failFriend(){
 	  $('#friendResult').html('');
   }
+  
+  
+</script>
+
+<script type="text/javascript">
+	function getUnread(){
+		$.ajax({
+			type : "POST",
+			url : "./chatUnread",
+			data : {
+				userID : encodeURIComponent('<%= userID %>'),
+				
+			},
+			success: function(result){
+				//  0을 받으면 에러, 1이상을 받으면 정상처리
+				if(result >= 1){
+					showUnread(result);
+				} else {
+					// 0이 입력받을 때 공백 처리
+					showUnread('');
+				}
+			}
+		});
+	}
+	// 반복적으로 서버한테 일정 주기 마다 자신이 읽지 않은 메시지 갯수를 요청하는 함수
+	function getInfiniteUnread(){
+		setInterval(function(){		
+			getUnread();			
+		}, 1000);
+	}
+	// unread라는 id값을 가진 원소 내부 값을 result로 담아주기.
+	function showUnread(result){
+		$('#unread').html(result);
+	}
+
 </script>
 </head>
 <body>
@@ -82,6 +117,7 @@
 			<ul class="nav navbar-nav">
 				<li><a href="index.jsp">메인</a></li>
 				<li class="active"><a href="find.jsp">친구찾기</a></li>
+				<li ><a href="box.jsp">메시지함<span id="unread" class="label label-info"></span></a></li>
 			</ul>
 
 			<ul class="nav navbar-nav navbar-right">
@@ -197,5 +233,20 @@ else
 			</div>
 		
 		</div>
+		<% // 사용자가 정상 로그인 시
+		if(userID != null) {
+		%>
+		
+		<script type="text/javascript">
+			// 기본적으로 메시지를 읽지않은 함수를 반복적으로 실행시키기
+			$(document).ready(function(){
+				getUnread();
+				getInfiniteUnread();
+			});
+		</script>
+		<%	
+			}
+		%>
+		
 </body>
 </html>

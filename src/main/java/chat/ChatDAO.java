@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 
 public class ChatDAO {
 	DataSource dataSource;
+	// 디비 연결
 	public ChatDAO() {
 		try {
 			InitialContext initContext = new InitialContext();
@@ -106,6 +107,76 @@ public class ChatDAO {
 				}
 				chat.setChatTime(rs.getString("chatTime").substring(0, 11) + " " + timeType + " " + chatTime + ":" + rs.getString("chatTime").substring(14, 16) + " ");
 				chatList.add(chat);
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if(rs !=null) rs.close();
+				if(pstmt !=null) pstmt.close();
+				if(conn !=null) conn.close();
+				
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return chatList; //리스트 반환
+	}
+	
+	
+	// 메세지함을 만드는 controller
+	public ArrayList<ChatDTO> getBox(String userID){
+		ArrayList<ChatDTO> chatList = null;
+		Connection conn = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		
+		// A라는 사용자가 B,C,D 라는 사용자와 대화를 했을 때 B,C,D와 가장 최근에 주고받은 메시지를 출력하게
+		// 쿼리문 짜기.
+		String SQL = "select * from chat where chatID in (select MAX(chatID) from chat where toID = ?"
+				+ "or fromID = ? group by fromID, toID)";
+		try {
+			conn = dataSource.getConnection();
+			pstmt = conn.prepareStatement(SQL);
+			pstmt.setString(1, userID);
+			pstmt.setString(2, userID);
+
+			rs = pstmt.executeQuery();
+			chatList = new ArrayList<ChatDTO>();
+			while(rs.next()) {
+				ChatDTO chat = new ChatDTO();
+				chat.setChatID(rs.getInt("chatID"));
+				chat.setFromID(rs.getString("fromID").replaceAll(" ", "&nbsp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br>"));
+				chat.setToID(rs.getString("toID").replaceAll(" ", "&nbsp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br>"));
+				chat.setChatContent(rs.getString("chatContent").replaceAll(" ", "&nbsp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br>"));
+				int chatTime = Integer.parseInt(rs.getString("chatTime").substring(11, 13));
+				String timeType="오전";
+				if (chatTime > 12) {
+					timeType = "오후";
+					chatTime -=12;
+					
+				}
+				chat.setChatTime(rs.getString("chatTime").substring(0, 11) + " " + timeType + " " + chatTime + ":" + rs.getString("chatTime").substring(14, 16) + " ");
+				chatList.add(chat);
+			}
+			
+			// 특정 두 메시지가 A,B라고 있을때  A메시지의 fromID가  B메시지의toID와 같고
+			// A메시지의 toID가 B메시지의 FromID와 같을 때 가장 최신에 있는 메시지를 1개만을 출력하기 위한 구문.
+			for(int i = 0; i < chatList.size(); i++) {
+				ChatDTO x = chatList.get(i);
+				for(int j = 0; j < chatList.size(); j++) {
+					ChatDTO y = chatList.get(j);
+					if(x.getFromID().equals(y.getToID()) && x.getToID().equals(y.getFromID())) {
+						if(x.getChatID() < y.getChatID()) {
+							chatList.remove(x);
+							i--;
+							break;
+						}else {
+							chatList.remove(y);
+							j--;
+						}
+					}
+				}
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
